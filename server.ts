@@ -11,23 +11,31 @@ app.use(express.json({ limit: "10mb" }));
 
 const PORT = 3000;
 
-// Initialize Google Gen AI
-let ai: GoogleGenAI | null = null;
-try {
-  if (process.env.GEMINI_API_KEY) {
-    ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
-  } else {
-    console.warn("GEMINI_API_KEY environment variable is not defined.");
+// Initialize Google Gen AI with lazy getter
+let aiClient: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API is not configured. Please add GEMINI_API_KEY inside Settings > Secrets.");
   }
-} catch (error) {
-  console.error("Failed to initialize GoogleGenAI:", error);
+
+  if (!aiClient) {
+    try {
+      aiClient = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Failed to initialize GoogleGenAI:", error);
+      throw new Error("Gagal menginisialisasi Google Gen AI SDK.");
+    }
+  }
+  return aiClient;
 }
 
 // Helpler to call Gemini for structured generation
@@ -38,9 +46,7 @@ async function generateBusinessFramework(
   docType: "journal" | "word" | "ppt" | "excel",
   additionalContext: string = ""
 ) {
-  if (!ai) {
-    throw new Error("Gemini API Client is not initialized. Please configure GEMINI_API_KEY.");
-  }
+  const ai = getAI();
 
   const focusPrompts: Record<string, string> = {
     MACRO: "fokus secara makro dan menyeluruh (seluruh aspek bisnis/ide proyek sekaligus)",
@@ -179,7 +185,7 @@ ${fileTemplatePrompt}
 
 Harap berikan respon dalam format JSON murni sesuai dengan skema respon yang ditentukan. Pastikan semua penjelasan, judul, dan data numerik logis dan relevan untuk ide bisnis "${projectName}".`;
 
-  const response = await ai!.models.generateContent({
+  const response = await ai.models.generateContent({
     model: "gemini-3.5-flash",
     contents: prompt,
     config: {
@@ -201,8 +207,10 @@ app.post("/api/generate", async (req, res) => {
       return res.status(400).json({ error: "Missing required parameters: projectName, projectDesc, focusArea, docType" });
     }
 
-    if (!ai) {
-      return res.status(503).json({ error: "Gemini API is not configured. Please add GEMINI_API_KEY inside Settings > Secrets." });
+    try {
+      getAI();
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
     }
 
     const data = await generateBusinessFramework(projectName, projectDesc, focusArea, docType, additionalContext);
@@ -221,8 +229,11 @@ app.post("/api/generate-illustration", async (req, res) => {
       return res.status(400).json({ error: "Missing required parameters: title and/or prompt" });
     }
 
-    if (!ai) {
-      return res.status(503).json({ error: "Gemini API is not configured. Please add GEMINI_API_KEY inside Settings > Secrets." });
+    let ai;
+    try {
+      ai = getAI();
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
     }
 
     const systemInstruction = "Anda adalah desainer grafis senior, desainer UI/UX, dan ahli ilustrasi vektor SVG profesional. Anda terbiasa membuat infografis bisnis, visualisasi alur strategis, dan dashboard data dalam format SVG yang sangat bersih, minimalis, dan modern.";
@@ -270,8 +281,11 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Missing or invalid messages array" });
     }
 
-    if (!ai) {
-      return res.status(503).json({ error: "Gemini API is not configured. Please add GEMINI_API_KEY inside Settings > Secrets." });
+    let ai;
+    try {
+      ai = getAI();
+    } catch (e: any) {
+      return res.status(503).json({ error: e.message });
     }
 
     // Format chat contents

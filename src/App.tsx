@@ -413,7 +413,7 @@ export default function App() {
     
     let fileContent = "";
     let mimeType = "text/plain";
-    let fileExtension = format;
+    let fileExtension: string = format;
 
     const cleanProjectNameForFile = projectName.replace(/[^a-zA-Z0-9]/g, "_");
     const cleanFocusForFile = focusTitle.replace(/[^a-zA-Z0-9]/g, "_");
@@ -635,6 +635,230 @@ RINGKASAN METRIK DAN AGREGAT:
 </body>
 </html>`;
     } else if (format === 'ppt') {
+      const pptData = data as any;
+      const slides = pptData.slides || [];
+      const title = pptData.presentationTitle || "Outline Presentasi Bisnis";
+      const subtitle = pptData.presentationSubtitle || "Ringkasan Tiap Slide untuk Presentasi Investor";
+
+      const pptx = new pptxgen();
+      pptx.layout = "LAYOUT_16x9";
+
+      // Map pptTheme to colors
+      let mainBg = "090C10";
+      let cardBg = "121620";
+      let titleColor = "FFFFFF";
+      let textColor = "CBD5E1";
+      let accentColor = "10B981"; // Emerald
+
+      if (pptTheme === 'midnight') {
+        mainBg = "090C10";
+        cardBg = "121620";
+        titleColor = "FFFFFF";
+        textColor = "CBD5E1";
+        accentColor = "10B981";
+      } else if (pptTheme === 'ocean') {
+        mainBg = "0B111E";
+        cardBg = "0F172A";
+        titleColor = "38BDF8";
+        textColor = "CBD5E1";
+        accentColor = "0EA5E9";
+      } else if (pptTheme === 'emerald') {
+        mainBg = "F0FBF7";
+        cardBg = "FFFFFF";
+        titleColor = "065F46";
+        textColor = "1E293B";
+        accentColor = "10B981";
+      } else if (pptTheme === 'sunlight') {
+        mainBg = "FFFDF5";
+        cardBg = "FFFFFF";
+        titleColor = "854D0E";
+        textColor = "1E293B";
+        accentColor = "D97706";
+      } else if (pptTheme === 'lavender') {
+        mainBg = "FAF8FF";
+        cardBg = "FFFFFF";
+        titleColor = "5B21B6";
+        textColor = "1E293B";
+        accentColor = "8B5CF6";
+      } else if (pptTheme === 'minimal') {
+        mainBg = "F8FAFC";
+        cardBg = "FFFFFF";
+        titleColor = "0F172A";
+        textColor = "334155";
+        accentColor = "475569";
+      }
+
+      // Slide 1: Welcome/Title Slide
+      const slide0 = pptx.addSlide();
+      slide0.background = { color: mainBg };
+
+      // Outer border box container
+      slide0.addShape("rect", {
+        x: 0.5, y: 0.5, w: 9.0, h: 4.625,
+        fill: { color: cardBg },
+        line: { color: accentColor, width: 2 }
+      });
+
+      // Accent top string
+      slide0.addText("PROJECT MODEL DECK • POWERPOINT EXPORT", {
+        x: 1.0, y: 0.9, w: 8.0, h: 0.4,
+        fontSize: 10,
+        color: accentColor,
+        bold: true,
+        align: "center",
+        fontFace: "Arial"
+      });
+
+      // Big Title
+      slide0.addText(title.toUpperCase(), {
+        x: 1.0, y: 1.5, w: 8.0, h: 1.5,
+        fontSize: 26,
+        bold: true,
+        color: titleColor,
+        align: "center",
+        fontFace: "Arial"
+      });
+
+      // Subtitle
+      slide0.addText(subtitle, {
+        x: 1.0, y: 3.1, w: 8.0, h: 0.8,
+        fontSize: 13,
+        color: textColor,
+        align: "center",
+        fontFace: "Arial"
+      });
+
+      // Bottom AI credit tag
+      slide0.addText("ELEGANT PRESENTATION • DIBUAT DENGAN PRAMA AI", {
+        x: 1.0, y: 4.2, w: 8.0, h: 0.4,
+        fontSize: 9,
+        color: textColor,
+        align: "center",
+        fontFace: "Arial"
+      });
+
+      // Slide-by-slide Generation
+      for (let idx = 0; idx < slides.length; idx++) {
+        const slide = slides[idx];
+        const newSlide = pptx.addSlide();
+        newSlide.background = { color: mainBg };
+
+        // Background container shape representing Gamma-like cards
+        newSlide.addShape("rect", {
+          x: 0.4, y: 0.4, w: 9.2, h: 4.825,
+          fill: { color: cardBg },
+          line: { color: "334155", width: 1 }
+        });
+
+        // Slide Title header left-spaced
+        newSlide.addText(slide.title.toUpperCase(), {
+          x: 0.7, y: 0.6, w: 6.0, h: 0.6,
+          fontSize: 18,
+          bold: true,
+          color: titleColor,
+          fontFace: "Arial"
+        });
+
+        // Unique high-impact statistic/highlightMetric badge
+        if (slide.highlightMetric) {
+          newSlide.addShape("roundRect", {
+            x: 6.8, y: 0.6, w: 2.3, h: 0.45,
+            fill: { color: mainBg },
+            line: { color: accentColor, width: 1 }
+          });
+          newSlide.addText(slide.highlightMetric, {
+            x: 6.8, y: 0.6, w: 2.3, h: 0.45,
+            fontSize: 10,
+            bold: true,
+            color: accentColor,
+            align: "center",
+            fontFace: "Arial"
+          });
+        }
+
+        const illustrationKey = `${selectedDocKey}_slide_${idx}`;
+        const illustrationSvg = illustrations[illustrationKey];
+        const hasIllustration = pptIncludeIllustrations && !!illustrationSvg;
+
+        if (hasIllustration) {
+          // Dynamic conversion of SVG illustrations into crisp embedded PNGs
+          let bulletY = 1.3;
+          const points = slide.points || [];
+          points.forEach((pt: string) => {
+            newSlide.addText(`•  ${pt}`, {
+              x: 0.7, y: bulletY, w: 5.0, h: 0.9,
+              fontSize: 12,
+              color: textColor,
+              align: "left",
+              fontFace: "Arial"
+            });
+            bulletY += 0.95;
+          });
+
+          try {
+            const pngDataUrl = await convertSvgToPng(illustrationSvg);
+            if (pngDataUrl) {
+              newSlide.addImage({
+                data: pngDataUrl,
+                x: 5.8,
+                y: 1.3,
+                w: 3.4,
+                h: 2.8
+              });
+            }
+          } catch (imgErr) {
+            console.error("Failed to render illustration image onto PowerPoint slide index:", idx, imgErr);
+          }
+        } else {
+          // No illustration layouts
+          const points = slide.points || [];
+          if (slide.layout === 'two_columns' || points.length > 3) {
+            const midIndex = Math.ceil(points.length / 2);
+            const leftCol = points.slice(0, midIndex);
+            const rightCol = points.slice(midIndex);
+
+            let bulletY = 1.4;
+            leftCol.forEach((pt: string) => {
+              newSlide.addText(`•  ${pt}`, {
+                x: 0.7, y: bulletY, w: 4.1, h: 0.9,
+                fontSize: 12, color: textColor, fontFace: "Arial"
+              });
+              bulletY += 0.95;
+            });
+
+            bulletY = 1.4;
+            rightCol.forEach((pt: string) => {
+              newSlide.addText(`•  ${pt}`, {
+                x: 5.1, y: bulletY, w: 4.1, h: 0.9,
+                fontSize: 12, color: textColor, fontFace: "Arial"
+              });
+              bulletY += 0.95;
+            });
+          } else {
+            // Full width bullet points
+            let bulletY = 1.4;
+            points.forEach((pt: string) => {
+              newSlide.addText(`•  ${pt}`, {
+                x: 0.7, y: bulletY, w: 8.6, h: 0.8,
+                fontSize: 13, color: textColor, fontFace: "Arial"
+              });
+              bulletY += 0.9;
+            });
+          }
+        }
+
+        // Standard Elegant Slide Numbers
+        newSlide.addText(`SLIDE 0${idx + 1} / 0${slides.length + 1}  •  ${projectName.toUpperCase()}  •  PRAMA AI SYSTEM`, {
+          x: 0.7, y: 4.8, w: 8.6, h: 0.3,
+          fontSize: 8.5,
+          color: textColor,
+          fontFace: "Courier New"
+        });
+      }
+
+      await pptx.writeFile({ fileName: filename });
+      return;
+    } else if (format === 'legacy_ppt') {
       mimeType = "text/html";
       const pptData = data as any;
       const slides = pptData.slides || [];
